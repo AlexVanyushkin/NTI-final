@@ -32,6 +32,7 @@ from aruco_pose.msg import MarkerArray
 import cv2
 
 from PIL import ImageDraw
+#Импорт бибилотек
 
 rospy.init_node('fly_with_QR')
 
@@ -60,6 +61,7 @@ popit = 10
 file = open('Report.txt', 'w')
 file.close()
 
+#Сохраняем телеметрию в файл
 def save_telem():
 	file = open('Report.txt', 'a+')
 	telemetry = get_telemetry()
@@ -138,6 +140,7 @@ for i in range(attempts + 1):
 
 image_pub = rospy.Publisher('Detect', Image)
 
+#Выделение контуров
 def cont():
     frame = bridge.imgmsg_to_cv2(rospy.wait_for_message('main_camera/image_raw', Image), 'bgr8')
     colors = {'black': [0, 0, 0, 180, 255, 50, [255, 105, 180]]}
@@ -181,7 +184,7 @@ rospy.sleep(0.5)
 save_telem()
 rospy.sleep(0.5)
 
-
+#Расшифровываем данные
 def decode_data(s):
     v = list(s)
     v1 = list(s)
@@ -250,6 +253,7 @@ else:
     Column_area_d.append('0')
     Column_area_d.append('0')
 
+#Определяем есть ли препятствие на пути коптера
 def equation(x1, y1, x2, y2, X1=0, Y1=0, X2=0, Y2=0, X3=0, Y3=0,):
     
     k = (y2 - y1) / (x2 - x1)
@@ -292,7 +296,7 @@ rospy.sleep(0.5)
 save_telem()
 rospy.sleep(0.5)
 
-
+#Летим и ждем окончания полета
 def navigate_wait(x=0, y=0, z=0, yaw=float('nan'), speed=0.5, frame_id='', auto_arm=False, tolerance=0.15):
     navigate(x=x, y=y, z=z, yaw=yaw, speed=speed, frame_id=frame_id, auto_arm=auto_arm)
 
@@ -308,7 +312,7 @@ image_pub_blue = rospy.Publisher('blue', Image)
 image_pub_yellow = rospy.Publisher('yellow', Image)
 image_pub_red = rospy.Publisher('red', Image)
 
-
+#Обводим объекты
 def obvod():
     frame = bridge.imgmsg_to_cv2(rospy.wait_for_message('main_camera/image_raw', Image), 'bgr8')
 
@@ -345,6 +349,7 @@ def obvod():
         return np.array((0, 0, 0), np.uint8), np.array((0, 0, 0), np.uint8)
     image_pub.publish(bridge.cv2_to_imgmsg(frame, 'bgr8'))
 
+#Получение выреза стрелки
 def getT(original):
     hsv_min = np.array((0, 0, 0), np.uint8)
     hsv_max = np.array((0, 0, 0), np.uint8)
@@ -381,6 +386,7 @@ def getT(original):
             thresh_new = rect_img[new_min_y:new_max_y, new_min_x:new_max_x]
 
             return thresh_new
+
 def main():
     original = bridge.imgmsg_to_cv2(rospy.wait_for_message('main_camera/image_raw', Image), 'bgr8')
     gray = getT(original)
