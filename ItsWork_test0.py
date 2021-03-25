@@ -27,9 +27,9 @@ from aruco_pose.msg import MarkerArray
 
 import cv2
 from sensor_msgs.msg import Image
-
+#импорт библиотек
 rospy.init_node('flight')
-
+#запуск ноды
 arming = rospy.ServiceProxy('mavros/cmd/arming', CommandBool)
 get_telemetry = rospy.ServiceProxy('get_telemetry', srv.GetTelemetry)
 navigate = rospy.ServiceProxy('navigate', srv.Navigate)
@@ -41,12 +41,11 @@ bridge = CvBridge()
 tf_buffer = tf2_ros.Buffer()
 tf_listener = tf2_ros.TransformListener(tf_buffer)
 
-
-f = cv2.VideoWriter_fourcc(*'XVID')
-vid = cv2.VideoWriter('vid.avi', f, 30.0, (320,240))
+f = cv2.VideoWriter_fourcc(*'XVID') #Запись видео
+vid = cv2.VideoWriter('vid.avi', f, 30.0, (320,240)) #Запись видео
 def image_callback(data):
     cv_image = bridge.imgmsg_to_cv2(data, 'bgr8')  # OpenCV image
-    vid.write(cv_image)
+    vid.write(cv_image) #Записывание изображения в видео
 
 image_sub = rospy.Subscriber('main_camera/image_raw_throttled', Image, image_callback)
 
@@ -74,13 +73,13 @@ def go_to_home():
     navigate_wait(x=0, y=0, z=0.8, speed=1.5, frame_id='aruco_map')
     land_wait()
 
-
+#Определение цвета
 def color_detect(cv_image):
     color = {'green': [40, 80, 60, 90, 255, 255, [0, 255, 0]]}
     colors_name = ['green']
     
     ret = []
-
+    
     for name in colors_name:
         hsv_param = color[name]
         hsv_min = np.array((hsv_param[0], hsv_param[1], hsv_param[2]), np.uint8)
@@ -88,6 +87,7 @@ def color_detect(cv_image):
 
         hsv = cv.cvtColor(cv_image, cv.COLOR_BGR2HSV)
         thresh = cv.inRange(hsv, hsv_min, hsv_max)
+        #Определение контуров
         new_image, contours0, hierarchy = cv.findContours(thresh.copy(), cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
         
         for cnt in contours0:
@@ -97,6 +97,7 @@ def color_detect(cv_image):
 
             thresh_new = cv.GaussianBlur(thresh, (5, 5), 2)
             rows = thresh_new.shape[0]
+            #нахождение кругов
             circles = []
             circles = cv.HoughCircles(thresh_new, cv.HOUGH_GRADIENT, 1, rows / 8,
                                     param1=100, param2=30,
@@ -107,7 +108,8 @@ def color_detect(cv_image):
                 for i in circles[0, :]:
                     center = [i[0], i[1]]
                     ret.append([center, 'circle', name])
-
+                    
+            #Отсекание слишком мелких распознанных объектов
             if sqrt((box[0][0] - box[2][0])**2 + (box[0][1] - box[2][1])**2) > 20:
                 
                 min_x = box[:, 0].min()
@@ -143,7 +145,7 @@ def color_detect(cv_image):
 
     return ret
 
-
+#Выведение в топик распознанных объектов 
 def contour(cv_image):
     color = {'green': [46, 50, 60, 100, 150, 150, [0, 255, 0]]}
     colors_name = ['green']
@@ -218,12 +220,12 @@ def contour(cv_image):
 
     image_pub.publish(bridge.cv2_to_imgmsg(cv_image, 'bgr8'))
 
-
+#подписчик, отправляющий изображение в функцию contour()
 def image_callback_cm(data):
     cv_image = bridge.imgmsg_to_cv2(data, 'bgr8')
     contour(cv_image)
 
-
+#Собирание информации о близлежащих метках
 def color_inf():
     color = {'green': [46, 50, 60, 100, 150, 150, [0, 255, 0]]}
     img = bridge.imgmsg_to_cv2(rospy.wait_for_message('main_camera/image_raw', Image), 'bgr8')
@@ -262,7 +264,7 @@ def color_inf():
     set_effect(effect='fill', r=255, g=0, b=255)
 
     return inf_metka
-
+#Делаем вычисления положений всех объектов относительно карты аруко-меток
 def map_cm():
     aruco_detect_markers = rospy.wait_for_message('aruco_detect/markers', MarkerArray)
     aruco_detect_marker_1 = aruco_detect_markers.markers[0]
@@ -333,11 +335,6 @@ def map_cm():
     else:
         return []
 
-popit = 10
-
-#Функция нахождения из данной строки
-#числа в float()
-
 
 #Up on body
 navigate_wait(x=0, y=0, z=1.0, speed=1.0, frame_id='body', auto_arm=True)
@@ -348,7 +345,7 @@ navigate_wait(x=0, y=0, z=1.0, speed=1.0, frame_id='aruco_map')
 rospy.sleep(2)
 
 
-
+#все распознанные маркеры
 mark = []
 
 polet_points = []
@@ -361,7 +358,7 @@ for i in range(yy):
             polet_points.append(point)
 
 print(polet_points)
-
+#Пролёт по карте 3 на 4к
 for i in range(len(polet_points)):
     poi = polet_points[i]
     navigate_wait(x=poi[0], y=poi[1], z=1.8, speed=1.0, frame_id='aruco_map')
@@ -374,6 +371,7 @@ print(metks)
 
 last_metk = []
 last_metk = metks
+#Попытки поиска цветной метки
 for i in range(10):
     navigate_wait(x=last_metk[0][0][0], y=last_metk[0][0][1], z=1.5, speed=1.0, frame_id='aruco_map')
     rospy.sleep(2)
