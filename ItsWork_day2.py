@@ -30,6 +30,7 @@ from aruco_pose.msg import MarkerArray
 
 
 import cv2
+#импорт библиотек
 
 rospy.init_node('fly_with_QR')
 
@@ -114,7 +115,7 @@ for i in range(attempts + 1):
     heights.append(new_height)
 
 image_pub = rospy.Publisher('Detect', Image)
-
+#Обводим все объекты
 def obvod(frame):
     colors = {'black': [0, 0, 0, 255, 255, 50, [255, 105, 180]]}
     colors_name = ['black']
@@ -137,7 +138,7 @@ def obvod(frame):
             if sqrt((box[0][0] - box[2][0])**2 + (box[0][1] - box[2][1])**2) > 25:
                 cv.drawContours(frame, [box], 0, (hsv_color[6][0], hsv_color[6][1], hsv_color[6][2]), 2)
     image_pub.publish(bridge.cv2_to_imgmsg(frame, 'bgr8'))
-
+#подписчик, отправляющий изображение в функцию contour()
 def image_callback(data):
     cv_image = bridge.imgmsg_to_cv2(data, 'bgr8')  # OpenCV image
     obvod(cv_image)
@@ -149,7 +150,7 @@ fly_and_wait(x=0, y=0, z=1, speed=1.0, frame_id='body', auto_arm=True)
 #Binding to aruco_map
 fly_and_wait(x=0, y=0, z=1.3, speed=1.0, frame_id='aruco_map')
 
-
+#Расшифровываем полученные данные
 def decode_data(s):
     v = list(s)
     v1 = list(s)
@@ -217,6 +218,7 @@ else:
     Column_area_d.append('0')
 ####################################################
 
+#Вычисляем препятствия на пути коптера
 def equation(x1, y1, x2, y2, X1=0, Y1=0, X2=0, Y2=0, X3=0, Y3=0,):
     
     k = (y2 - y1) / (x2 - x1)
@@ -282,7 +284,7 @@ def go_to_home():
     navigate_wait(x=0, y=0, z=0.8, speed=1.5, frame_id='aruco_map')
     land_wait()
 
-
+#Распознавание цветов
 def color_detect(cv_image):
     color = {'green': [40, 80, 60, 90, 255, 255, [0, 255, 0]]}
     colors_name = ['green']
@@ -351,7 +353,7 @@ def color_detect(cv_image):
 
     return ret
 
-
+#Выделение контура объектов
 def contour(cv_image):
     color = {'green': [46, 47, 56, 104, 137, 160, [0, 255, 0]]}
     colors_name = ['green']
@@ -426,12 +428,12 @@ def contour(cv_image):
 
     image_pub.publish(bridge.cv2_to_imgmsg(cv_image, 'bgr8'))
 
-
+#подписчик, отправляющий изображение в функцию contour()
 def image_callback_cm(data):
     cv_image = bridge.imgmsg_to_cv2(data, 'bgr8')
     contour(cv_image)
 
-
+#Получаем информацию о цвете
 def color_inf():
     color = {'green': [46, 47, 56, 104, 137, 160, [0, 255, 0]]}
     img = bridge.imgmsg_to_cv2(rospy.wait_for_message('main_camera/image_raw', Image), 'bgr8')
@@ -470,7 +472,7 @@ def color_inf():
     set_effect(effect='fill', r=255, g=0, b=255)
 
     return inf_metka
-
+#Делаем вычисления положений всех объектов относительно карты аруко-меток
 def map_cm():
     aruco_detect_markers = rospy.wait_for_message('aruco_detect/markers', MarkerArray)
     aruco_detect_marker_1 = aruco_detect_markers.markers[0]
