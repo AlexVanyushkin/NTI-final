@@ -27,9 +27,10 @@ from aruco_pose.msg import MarkerArray
 
 import cv2
 from sensor_msgs.msg import Image
-
+#импорт библиотек
 rospy.init_node('flight')
 
+#объявление proxis
 arming = rospy.ServiceProxy('mavros/cmd/arming', CommandBool)
 get_telemetry = rospy.ServiceProxy('get_telemetry', srv.GetTelemetry)
 navigate = rospy.ServiceProxy('navigate', srv.Navigate)
@@ -41,7 +42,7 @@ bridge = CvBridge()
 tf_buffer = tf2_ros.Buffer()
 tf_listener = tf2_ros.TransformListener(tf_buffer)
 
-
+#Запись видео
 f = cv2.VideoWriter_fourcc(*'XVID')
 vid = cv2.VideoWriter('vid.avi', f, 30.0, (320,240))
 def image_callback(data):
@@ -74,7 +75,7 @@ def go_to_home():
     navigate_wait(x=0, y=0, z=0.8, speed=1.5, frame_id='aruco_map')
     land_wait()
 
-
+#Определение цвета
 def color_detect(cv_image):
     color = {'green': [40, 80, 60, 90, 255, 255, [0, 255, 0]]}
     colors_name = ['green']
@@ -143,7 +144,7 @@ def color_detect(cv_image):
 
     return ret
 
-
+#Выведение в топик распознанных объектов 
 def contour(cv_image):
     color = {'green': [46, 50, 60, 100, 150, 150, [0, 255, 0]]}
     colors_name = ['green']
@@ -218,12 +219,12 @@ def contour(cv_image):
 
     image_pub.publish(bridge.cv2_to_imgmsg(cv_image, 'bgr8'))
 
-
+#подписчик, отправляющий изображение в функцию contour()
 def image_callback_cm(data):
     cv_image = bridge.imgmsg_to_cv2(data, 'bgr8')
     contour(cv_image)
 
-
+#Собирание информации о близлежащих метках
 def color_inf():
     color = {'green': [46, 50, 60, 100, 150, 150, [0, 255, 0]]}
     img = bridge.imgmsg_to_cv2(rospy.wait_for_message('main_camera/image_raw', Image), 'bgr8')
@@ -262,7 +263,7 @@ def color_inf():
     set_effect(effect='fill', r=255, g=0, b=255)
 
     return inf_metka
-
+#Делаем вычисления положений всех объектов относительно карты аруко-меток
 def map_cm():
     aruco_detect_markers = rospy.wait_for_message('aruco_detect/markers', MarkerArray)
     aruco_detect_marker_1 = aruco_detect_markers.markers[0]
@@ -338,6 +339,7 @@ def map_cm():
 image_pub = rospy.Publisher('Debug', Image)
 image_pu = rospy.Publisher('color_debu', Image)
 
+#Обводим контуры
 def obvod(frame):
     colors = {'green': [46, 50, 60, 100, 140, 160, [0, 255, 0]]}
     colors_name = ['green']
@@ -361,11 +363,12 @@ def obvod(frame):
                 cv.drawContours(frame, [box], 0, (hsv_color[6][0], hsv_color[6][1], hsv_color[6][2]), 2)
     image_pub.publish(bridge.cv2_to_imgmsg(frame, 'bgr8'))
 
+#подписчик, отправляющий изображение в функцию contour()
 def image_callback(data):
     cv_image = bridge.imgmsg_to_cv2(data, 'bgr8')  # OpenCV image
     obvod(cv_image)
 image_sub = rospy.Subscriber('main_camera/image_raw_throttled', Image, image_callback)
-
+#Сохраняем телеметрию в файл
 def save_telem():
 	file = open('Report.txt', 'a+')
 	telemetry = get_telemetry()
@@ -382,7 +385,7 @@ save_telem()
 rospy.sleep(2)
 
 
-
+#Все распознанные маркеры
 mark = []
 
 polet_points = []
@@ -440,7 +443,7 @@ for i in range(10):
             last_metk = metks
             bre = 1
             break
-
+#Полет
 navigate_wait(x=last_metk[0][0][0], y=last_metk[0][0][1], z=1.0, speed=1.0, frame_id='aruco_map')
 rospy.sleep(0.2)
 save_telem()
